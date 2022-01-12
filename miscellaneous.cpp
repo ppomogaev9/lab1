@@ -171,32 +171,32 @@ bool check_contains(const uint32_t num_of_true_str, const uint32_t num_of_fake_s
 	if (num_of_true_str == 0) {
 		HashTable D;
 		for (uint32_t i = 0; i < num_of_fake_str; ++i) {
-			Key test = random_string_generator(len + 1);
-			if (D.contains(test) != false) {
+			Key k = random_string_generator(len + 1);
+			if (D.contains(k)) {
 				return false;
 			}
 		}
 		return true;
 	}
 
-	std::vector<Key> V;
+	std::vector<Key> v;
 	for (uint32_t i = 0; i < num_of_true_str; ++i) {
-		V.push_back(random_string_generator(len));
+		v.push_back(random_string_generator(len));
 	}
 
-	HashTable D;
+	HashTable t;
 	for (uint32_t i = 0; i < num_of_true_str; ++i)
-		D.insert(V[i], Value(Key("")));
+		t.insert(v[i], Value(Key("")));
 
 	for (uint32_t i = 0; i < num_of_true_str; ++i) {
-		if (D.contains(V[i]) != true) {
+		if (!t.contains(v[i])) {
 			return false;
 		}
 	}
 
 	for (uint32_t i = 0; i < num_of_fake_str; ++i) {
 		Key test = random_string_generator(len + 1);
-		if (D.contains(test) != false) {
+		if (t.contains(test)) {
 			return false;
 		}
 	}
@@ -205,14 +205,14 @@ bool check_contains(const uint32_t num_of_true_str, const uint32_t num_of_fake_s
 	Random random_two(0, num_of_true_str - 1, num_of_true_str);
 	for (uint32_t i = 0; i < num_of_fake_str + num_of_true_str; ++i) {
 		if (randomizer.get_random_num()) {
-			int id = num_of_true_str == 0 ? 0 : random_two.get_random_num();
-			if (D.contains(V[id]) != true) {
+			int id = random_two.get_random_num();
+			if (!t.contains(v[id])) {
 				return false;
 			}
 		}
 		else {
 			std::string test = random_string_generator(len + 1);
-			if (D.contains(test) != false) {
+			if (t.contains(test)) {
 				return false;
 			}
 		}

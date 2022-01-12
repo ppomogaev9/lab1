@@ -5,27 +5,29 @@
 using std::list;
 
 namespace constants {
-	uint32_t large_prime_number = 4294967291;
-	uint32_t large_prime_number2 = INT_MAX;
-	uint32_t chiselka = 256; 
+	uint32_t chiselka = 256;
+    // CR: move to hash_table as static field
 	size_t start_capacity = 16;
+    // CR: move to insert
 	size_t overflow_coeff = 5;
+    // CR: move to insert
 	int expand_coeff = 2;
 	const Value default_value("", 0);
 }
 
 using namespace constants;
 
-HashTable::Cell::Cell(const Key& k, const Value& v) : key(k), val(v) {};
+HashTable::Cell::Cell(const Key& k, const Value& v) : key(k), val(v) {}
 
 uint32_t HashTable::calc_prime_hash(const Key& key) const {
+    uint32_t large_prime_number = 4294967291;
 	uint64_t powered_chiselka = 1; 
 	uint64_t hash = 0;
 
 	for (unsigned char x : key) {
 		hash += x * powered_chiselka;
 		hash %= large_prime_number;
-		powered_chiselka = (pow_chiselka * static_cast<uint64_t>(chiselka)) % large_prime_number;
+		powered_chiselka = (powered_chiselka * static_cast<uint64_t>(chiselka)) % large_prime_number;
 	}
 
 	return static_cast<uint32_t>(hash);
@@ -35,9 +37,7 @@ uint32_t HashTable::calc_hash(const Key& key) const {
 	return calc_prime_hash(key) % _capacity;
 }
 
-HashTable::HashTable() : _size(0), _capacity(start_capacity) {
-	_storage.resize(start_capacity);
-}
+HashTable::HashTable() : _capacity(start_capacity), _storage(start_capacity) {}
 
 const std::list<HashTable::Cell>& HashTable::get_list(const Key& k) const {
 	return _storage[calc_hash(k)];
@@ -47,9 +47,10 @@ std::list<HashTable::Cell>& HashTable::get_list(const Key& k) {
 	return _storage[calc_hash(k)];
 }
 
-list<HashTable::Cell>::iterator HashTable::find(const Key& k, list<Cell>& List) {
-	std::list<Cell>::iterator result = List.begin();
-	for (result; result != List.end(); ++result) {
+list<HashTable::Cell>::iterator HashTable::find(const Key& k, list<Cell>& list) {
+    // CR: std::find
+	auto result = list.begin();
+	for (; result != list.end(); ++result) {
 		if (result->key == k)
 			break;
 	}
@@ -83,16 +84,12 @@ bool HashTable::prime_insert(const Key& k, const Value& v)
 	return true;
 }
 
-HashTable& HashTable::operator=(const HashTable& b) {
-	_storage = b._storage;
-	_size = b._size;
-	_capacity = b._capacity;
-	return *this;
-}
+HashTable& HashTable::operator=(const HashTable& b) = default;
 
-HashTable::HashTable(const HashTable& b): _storage(b._storage), _size(b._size), _capacity(b._capacity) {}
+HashTable::HashTable(const HashTable& b) = default;
 
 void HashTable::swap(HashTable& b) {
+    // CR: std::swap(_storage, b._storage);
 	HashTable t = *this;
 	*this = b;
 	b = t;
@@ -106,6 +103,7 @@ void HashTable::clear() {
 }
 
 bool HashTable::erase(const Key& k) {
+    // CR: separate method that returns iterator and use it inside contains and erase
 	if (this->contains(k)) {
 		get_list(k).erase(find(k));
 		--_size;
@@ -122,8 +120,8 @@ bool HashTable::insert(const Key& k, const Value& v) {
 		_storage.clear();
 		_storage.resize(_capacity);
 
-		for (auto list : old_storage) {
-			for (auto cell : list) {
+		for (const auto& list : old_storage) {
+			for (const auto& cell : list) {
 				prime_insert(cell.key, cell.val);
 			}
 		}
@@ -137,7 +135,9 @@ bool HashTable::insert(const Key& k, const Value& v) {
 bool HashTable::contains(const Key& k) const {
 	if (_size == 0)
 		return false;
-	return find(k) != get_list(k).end();
+    const list<Cell> & list = _storage[calc_hash(k)];
+    auto it = std::find(list.begin(), list.end(),[&k](const Cell &c) { return c.key == k; });
+    return it != list.end();
 }
 
 Value& HashTable::operator[](const Key& k) {
@@ -151,14 +151,14 @@ Value& HashTable::at(const Key& k) {
 	if (this->contains(k))
 		return find(k)->val;
 	else
-		throw std::out_of_range("at threw to you \"out of range\"-excpetion");
+		throw std::out_of_range("at threw to you \"out of range\"-exception");
 }
 
 const Value& HashTable::at(const Key& k) const {
 	if (this->contains(k))
 		return find(k)->val;
 	else
-		throw std::out_of_range("at threw to you \"out of range\"-excpetion");
+		throw std::out_of_range("at threw to you \"out of range\"-exception");
 }
 
 size_t HashTable::size() const {
@@ -166,9 +166,7 @@ size_t HashTable::size() const {
 }
 
 bool HashTable::empty() const {
-	if (_size == 0)
-		return true;
-	return false;
+    return _size == 0;
 }
 
 bool operator==(const HashTable& a, const HashTable& b)
@@ -177,9 +175,10 @@ bool operator==(const HashTable& a, const HashTable& b)
 		return false;
 	if (a._size == 0)
 		return true;
-	for (int i = 0; i < a._storage.size(); ++i) {
-		for (auto j = a._storage[i].begin(); j != a._storage[i].end(); ++j) {
-			if (!b.contains((*j).key))
+	for (const auto & a_list : a._storage) {
+		for (const auto & a_cell : a_list) {
+            // CR: check both key and value
+			if (!b.contains(a_cell.key))
 				return false;
 		}
 	}

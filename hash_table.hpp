@@ -13,8 +13,8 @@ struct Value {
 
 class HashTable {
 public:
-	// creates an ampty HT. Empty HT consist of vector of 16 empty lists(std::list)
-	// so that constructor inizializes corresponding values and resizes the lists vector
+	// creates an empty HT. Empty HT consist of vector of 16 empty lists(std::list)
+	// so that constructor initializes corresponding values and resizes the lists vector
 	HashTable();
 
 	~HashTable() = default;
@@ -34,7 +34,7 @@ public:
 
 	// if our HT contains k then "erase" calls a list corresponding to k and then with function 
 	// std::list<...>::erase erases corresponding to k value and k itself from the 
-	// storage(vector of lists) and returns true; if it does't then the function just returns
+	// storage(vector of lists) and returns true; if it doesn't then the function just returns
 	// false 
 	bool erase(const Key& k);
 
@@ -51,7 +51,7 @@ public:
 	Value& operator[](const Key& k);
 	
 	// behave the same as the operator[] except if HT doesn't contain the key. If that then 
-	// "at" will throw an std::out_of_range exception
+	// "at" will throw a std::out_of_range exception
 	Value& at(const Key& k);
 	const Value& at(const Key& k) const;
 
@@ -65,12 +65,14 @@ public:
 	// equal keys, then the operator returns true. In any other cases it returns false.
 	friend bool operator==(const HashTable& a, const HashTable& b);
 
-	// behaves opositelly to operator==
+	// behaves oppositely to operator==
 	friend bool operator!=(const HashTable& a, const HashTable& b);
 private:
-	size_t _size;
+	size_t _size = 0;
+    // CR: size_t _capacity = start_capacity
 	size_t _capacity;
 
+    // CR: class -> struct
 	class Cell {
 	public:
 		Key key;
@@ -78,6 +80,7 @@ private:
 		Cell(const Key&, const Value&);
 	};
 
+    // CR: std::list -> std::list*
 	std::vector<std::list<Cell>> _storage;
 
 	uint32_t calc_prime_hash(const Key&) const;
@@ -88,7 +91,7 @@ private:
 
 	std::list<Cell>& get_list(const Key& k);
 
-	std::list<Cell>::iterator find(const Key& k, std::list<Cell>& List);
+	std::list<Cell>::iterator find(const Key& k, std::list<Cell>& list);
 
 	std::list<Cell>::iterator find(const Key& k);
 	

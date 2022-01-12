@@ -4,7 +4,7 @@
 #include "randomize.hpp"
 
 namespace testing_constants {
-	unsigned int def_test_num = 100;
+	static const unsigned int NUM_TO_INSERT = 100;
 	unsigned int def_HT_size = 100;
 	unsigned int large_test = 1000;
 	unsigned int age_min = 0;
@@ -69,6 +69,7 @@ Key give_me_different_key(Key key, unsigned int key_length = string_len) {
 
 TEST(PrepChecks, DefConsturctorCheck) {
 	EXPECT_NO_FATAL_FAILURE(HashTable());
+    // CR: check size = 0
 }
 
 // insert elementary check
@@ -89,7 +90,7 @@ TEST(PrepChecks, ElementaryCheckOfRetValOfInsert) {
 	EXPECT_TRUE(A.insert(key_example, value_example));
 	EXPECT_FALSE(A.insert(key_example, value_example));
 	EXPECT_FALSE(A.insert(key_example, Value(random_name_generator(), age_min)));
-	for (int i = 0; i < def_test_num; ++i) {
+	for (int i = 0; i < NUM_TO_INSERT; ++i) {
 		Key key = random_name_generator(i + string_len);
 		EXPECT_TRUE(A.insert(key, value_example));
 		EXPECT_FALSE(A.insert(key, value_example));
@@ -98,9 +99,11 @@ TEST(PrepChecks, ElementaryCheckOfRetValOfInsert) {
 
 // contains elementary check: randomly filling HT and then check if contains returns true 
 // on inserted numbers
+// CR: remove test
 TEST(PrepChecks, ElementaryContainsCheck) {
 	HashTable A;
 	std::vector<Cell> A_content = rand_fill_without_reps(A, def_HT_size);
+    EXPECT_EQ(def_HT_size, A.size());
 	for (auto x : A_content) {
 		EXPECT_TRUE(A.contains(x.first));
 	}
@@ -108,6 +111,7 @@ TEST(PrepChecks, ElementaryContainsCheck) {
 
 // randomly filling HT and then check if size() returns a number that equals to the amount
 // of different keys inserted it
+// CR: remove test
 TEST(PrepChecks, ElementarySizeCheck) {
 	HashTable A;
 	for (size_t i = 1; i <= large_test; ++i) {
@@ -128,10 +132,10 @@ TEST(PrepChecks, ElementarySquareBrackCheck) {
 	EXPECT_EQ(A[key_example], value_example);
 	EXPECT_EQ(A[give_me_different_key(key_example)], default_value);
 
-	std::vector<Cell> Cells = rand_fill_without_reps(A, def_test_num);
+	std::vector<Cell> cells = rand_fill_without_reps(A, NUM_TO_INSERT);
 
-	for (int i = 0; i < def_test_num; ++i) {
-		EXPECT_NE(A[Cells[i].first], default_value);
+	for (int i = 0; i < NUM_TO_INSERT; ++i) {
+		EXPECT_NE(A[cells[i].first], default_value);
 	}
 }
 
@@ -155,9 +159,9 @@ TEST(InsertCheck, Check) {
 TEST(ContainsCheck, UltimateCheck) {
 	EXPECT_TRUE(check_contains(0, 1));
 	EXPECT_TRUE(check_contains(1, 0));
-	EXPECT_TRUE(check_contains(0, def_test_num));
-	EXPECT_TRUE(check_contains(def_test_num, 0));
-	EXPECT_TRUE(check_contains(def_test_num, def_test_num));
+	EXPECT_TRUE(check_contains(0, NUM_TO_INSERT));
+	EXPECT_TRUE(check_contains(NUM_TO_INSERT, 0));
+	EXPECT_TRUE(check_contains(NUM_TO_INSERT, NUM_TO_INSERT));
 	EXPECT_TRUE(check_contains(large_test, large_test));
 }
 
@@ -181,10 +185,10 @@ TEST(CheckEqOps, CheckEquiSizeHT_Eq) {
 	Random randomizer;
 	HashTable A;
 	HashTable B;
-	int keys_num = randomizer.get_random_num(1, def_test_num);
+	int keys_num = randomizer.get_random_num(1, NUM_TO_INSERT);
 	for (int i = 0; i < keys_num; ++i) {
 		Key key = random_string_generator();
-		Value v(random_name_generator(), randomizer.get_random_num(1, def_test_num));
+		Value v(random_name_generator(), randomizer.get_random_num(1, NUM_TO_INSERT));
 		A.insert(key, v);
 		B.insert(key, v);
 	}
@@ -194,13 +198,14 @@ TEST(CheckEqOps, CheckEquiSizeHT_Eq) {
 	HashTable C;
 	HashTable D;
 	EXPECT_TRUE(C == D);
+    EXPECT_FALSE(C != D);
 }
 
 TEST(CheckEqOps, CheckEquiSizeHT_NotEq) {
 	Random randomizer;
 	HashTable A;
 	HashTable B;
-	int keys_num = randomizer.get_random_num(1, def_test_num);
+	int keys_num = randomizer.get_random_num(1, NUM_TO_INSERT);
 	for (int i = 0; i < keys_num; ++i) {
 		Key key = random_string_generator();
 		Value v(random_name_generator(), randomizer.get_random_num(age_min, age_max));
@@ -210,16 +215,17 @@ TEST(CheckEqOps, CheckEquiSizeHT_NotEq) {
 		v.age = randomizer.get_random_num(age_min, age_max);
 		B.insert(key, v);
 	}
+    // CR: might fail
 	EXPECT_FALSE(A == B);
 	EXPECT_TRUE(A != B);
 }
 
 TEST(CheckEqOps, CheckDiffSizeHT) {
 	Random randomizer;
-	int sizeA = randomizer.get_random_num(1, def_test_num);
+	int sizeA = randomizer.get_random_num(1, NUM_TO_INSERT);
 	int sizeB = sizeA;
 	while (sizeB == sizeA)
-		sizeB = randomizer.get_random_num(1, def_test_num);
+		sizeB = randomizer.get_random_num(1, NUM_TO_INSERT);
 	Key key = "test";
 	Value val("testName", 0);
 	HashTable A;
@@ -230,6 +236,7 @@ TEST(CheckEqOps, CheckDiffSizeHT) {
 	for (int i = 0; i < sizeB; ++i) {
 		B.insert(key, val);
 	}
+    // CR: probably wrong test?
 	EXPECT_FALSE(A == B);
 	EXPECT_TRUE(A != B);
 }
@@ -255,14 +262,14 @@ bool repetition_exist(std::vector<Cell> V) {
 TEST(EraseCheck, EraseContainedKeys) {
 	Random randomizer;
 	std::vector<Cell> Cells;
-	Cells.resize(def_test_num, Cell("", Value("", 0)));
+	Cells.resize(NUM_TO_INSERT, Cell("", Value("", 0)));
 	std::vector<bool> HT_contain;
-	HT_contain.resize(def_test_num);
+	HT_contain.resize(NUM_TO_INSERT);
 
 	HashTable HT;
 	do {
 		HT.clear();
-		for (int i = 0; i < def_test_num; ++i) {
+		for (int i = 0; i < NUM_TO_INSERT; ++i) {
 			Key key = random_string_generator();
 			Value val(random_name_generator(), randomizer.get_random_num(age_min, age_max));
 			Cell cell(key, val);
@@ -272,27 +279,27 @@ TEST(EraseCheck, EraseContainedKeys) {
 		}
 	} while (repetition_exist(Cells));
 	
-	int tests_amount = randomizer.get_random_num(1, def_test_num / 3);
+	int tests_amount = randomizer.get_random_num(1, NUM_TO_INSERT / 3);
 	for (int i = 0; i < tests_amount; ++i) {
-		int id = randomizer.get_random_num(1, def_test_num - 1);
-		while (HT_contain[id] != true)
-			id = randomizer.get_random_num(1, def_test_num - 1);
+		int id = randomizer.get_random_num(1, NUM_TO_INSERT - 1);
+		while (!HT_contain[id])
+			id = randomizer.get_random_num(1, NUM_TO_INSERT - 1);
 		HT.erase(Cells[id].first);
 		HT_contain[id] = false;
 	}
 
-	for (int i = 0; i < def_test_num; ++i) {
+	for (int i = 0; i < NUM_TO_INSERT; ++i) {
 		EXPECT_EQ(HT.contains(Cells[i].first), HT_contain[i]);
 	}
 }
 
-// check emptines after erasing of all elements
-TEST(CheckEmpty, EmptinesOfErasedHTCheck) {
+// check emptiness after erasing of all elements
+TEST(CheckEmpty, EmptinessOfErasedHTCheck) {
 	HashTable A;
 	A.insert(key_example, value_example);
 	A.erase(key_example);
 	EXPECT_TRUE(A.empty());
-	std::vector<Cell> Cells = rand_fill_without_reps(A, def_test_num);
+	std::vector<Cell> Cells = rand_fill_without_reps(A, NUM_TO_INSERT);
 	EXPECT_FALSE(A.empty());
 	for (auto x : Cells)
 		A.erase(x.first);
