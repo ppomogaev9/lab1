@@ -130,7 +130,7 @@ bool HashTable::erase(const Key& k) {
 	if (it == list->end())
 		return false;
 	list->erase(it);
-	if (list->size() == 0) {
+	if (!list->size()) {
 		delete list;
 		list = nullptr;
 	}
@@ -178,7 +178,7 @@ bool HashTable::insert(const Key& k, const Value& v) {
 
 // unfortunatelly, std::find doesn't work
 bool HashTable::contains(const Key& k) const {
-	if (_size == 0)
+	if (!_size)
 		return false;
 	const std::list<Cell>* list = _storage[calc_hash(k)];
 	if (!list)
@@ -231,7 +231,7 @@ size_t HashTable::size() const {
 }
 
 bool HashTable::empty() const {
-	return _size == 0;
+	return !_size;
 }
 
 bool HashTable::contains_both(const Key& k, const Value& v) const {
@@ -250,7 +250,7 @@ bool operator==(const HashTable& a, const HashTable& b)
 {
 	if (a._size != b._size)
 		return false;
-	if (a._size == 0)
+	if (!a._size)
 		return true;
 	for (int i = 0; i < a._storage.size(); ++i) {
 		if (!a._storage[i])
