@@ -4,30 +4,18 @@
 
 using std::list;
 
-namespace constants {
-	uint32_t chiselka = 256;
-    // CR: move to hash_table as static field
-	size_t start_capacity = 16;
-    // CR: move to insert
-	size_t overflow_coeff = 5;
-    // CR: move to insert
-	int expand_coeff = 2;
-	const Value default_value("", 0);
-}
-
-using namespace constants;
-
-HashTable::Cell::Cell(const Key& k, const Value& v) : key(k), val(v) {}
+HashTable::Cell::Cell(const Key& k, const Value& v) : key(k), val(v) {};
 
 uint32_t HashTable::calc_prime_hash(const Key& key) const {
-    uint32_t large_prime_number = 4294967291;
-	uint64_t powered_chiselka = 1; 
+	const uint32_t large_prime_number = 4294967291;
+	const uint32_t characters_amount = 256;
+	uint64_t powered_chars_amount = 1;
 	uint64_t hash = 0;
 
 	for (unsigned char x : key) {
-		hash += x * powered_chiselka;
+		hash += x * powered_chars_amount;
 		hash %= large_prime_number;
-		powered_chiselka = (powered_chiselka * static_cast<uint64_t>(chiselka)) % large_prime_number;
+		powered_chars_amount = (powered_chars_amount * static_cast<uint64_t>(characters_amount)) % large_prime_number;
 	}
 
 	return static_cast<uint32_t>(hash);
@@ -37,128 +25,205 @@ uint32_t HashTable::calc_hash(const Key& key) const {
 	return calc_prime_hash(key) % _capacity;
 }
 
-HashTable::HashTable() : _capacity(start_capacity), _storage(start_capacity) {}
+HashTable::HashTable() : _capacity(_start_capacity), _storage(_start_capacity, nullptr) {}
 
-const std::list<HashTable::Cell>& HashTable::get_list(const Key& k) const {
-	return _storage[calc_hash(k)];
+HashTable::~HashTable() {
+	for (int i = 0; i < _storage.size(); ++i) {
+		if (_storage[i])
+			delete _storage[i];
+	}
 }
 
-std::list<HashTable::Cell>& HashTable::get_list(const Key& k) {
-	return _storage[calc_hash(k)];
-}
-
-list<HashTable::Cell>::iterator HashTable::find(const Key& k, list<Cell>& list) {
-    // CR: std::find
-	auto result = list.begin();
-	for (; result != list.end(); ++result) {
+list<HashTable::Cell>::iterator HashTable::find(const Key& k, list<Cell>* list) {
+	std::list<Cell>::iterator result = list->begin();
+	for (result; result != list->end(); ++result) {
 		if (result->key == k)
 			break;
 	}
 	return result;
 }
 
-list<HashTable::Cell>::iterator HashTable::find(const Key& k) {
-	return find(k, get_list(k));
-}
-
-list<HashTable::Cell>::const_iterator HashTable::find(const Key& k, const list<Cell>& List) const {
-	std::list<Cell>::const_iterator result = List.begin();
-	for (result; result != List.end(); ++result) {
+list<HashTable::Cell>::const_iterator HashTable::find(const Key& k, const list<Cell>* list) const {
+	std::list<Cell>::const_iterator result = list->begin();
+	for (result; result != list->end(); ++result) {
 		if (result->key == k)
 			break;
 	}
 	return result;
-}
-
-list<HashTable::Cell>::const_iterator HashTable::find(const Key& k) const {
-	return find(k, get_list(k));
 }
 
 bool HashTable::prime_insert(const Key& k, const Value& v)
 {
-	if (this->contains(k)) {
-		find(k)->val = v;
+	std::list<Cell>*& list = _storage[calc_hash(k)];
+	if (!list) 
+		list = new std::list<Cell>;
+
+	auto it = find(k, list);
+	if (it != list->end()) {
+		it->val = v;
 		return false;
 	}
-	get_list(k).emplace_back(k, v);
+
+	list->emplace_back(k, v);
 	return true;
 }
 
-HashTable& HashTable::operator=(const HashTable& b) = default;
+HashTable& HashTable::operator=(const HashTable& b) {
+	if (this == &b)
+		return *this;
 
-HashTable::HashTable(const HashTable& b) = default;
+	for (auto& list : _storage) {
+		if (!list)
+			continue;
+		delete list;
+		list = nullptr;
+	}
+
+	_storage.resize(b._storage.size(), nullptr);
+
+	for (int i = 0; i < _storage.size(); ++i) {
+		if (!b._storage[i])
+			continue;
+		_storage[i] = new std::list<Cell>;
+		for (auto cell : *b._storage[i])
+			_storage[i]->push_back(cell);
+	}
+
+	_size = b._size;
+	_capacity = b._capacity;
+	return *this;
+}
+
+HashTable::HashTable(const HashTable& b): _size(b._size), _capacity(b._capacity), _storage(b._storage.size(), nullptr) {
+	for (int i = 0; i < _storage.size(); ++i) {
+		if (!b._storage[i])
+			continue;
+		_storage[i] = new std::list<Cell>;
+		for (auto cell : *b._storage[i])
+			_storage[i]->push_back(cell);
+	}
+}
 
 void HashTable::swap(HashTable& b) {
-    // CR: std::swap(_storage, b._storage);
-	HashTable t = *this;
-	*this = b;
-	b = t;
+	std::swap(_storage, b._storage);
+	std::swap(_size, b._size);
+	std::swap(_capacity, b._capacity);
 }
 
 void HashTable::clear() {
+	for (int i = 0; i < _storage.size(); ++i) {
+		if (_storage[i])
+			delete _storage[i];
+	}
 	_storage.clear();
+	_storage.resize(_start_capacity, nullptr);
 	_size = 0;
-	_capacity = start_capacity;
+	_capacity = _start_capacity;
 	_storage.resize(_capacity);
 }
 
 bool HashTable::erase(const Key& k) {
-    // CR: separate method that returns iterator and use it inside contains and erase
-	if (this->contains(k)) {
-		get_list(k).erase(find(k));
-		--_size;
-		return true;
+	std::list<Cell>*& list = _storage[calc_hash(k)];
+	if (!list)
+		return false;
+	auto it = find(k, list);
+	if (it == list->end())
+		return false;
+	list->erase(it);
+	if (list->size() == 0) {
+		delete list;
+		list = nullptr;
 	}
-	return false;
-}
 
-bool HashTable::insert(const Key& k, const Value& v) {
-	if (_size * overflow_coeff >= _capacity) {
-		_capacity *= expand_coeff;
+	--_size;
+	if ((_capacity > _start_capacity) && (_size * _overflow_coeff < _capacity)) {
+		_capacity /= _expand_coeff;
 
-		std::vector<std::list<Cell>> old_storage = _storage;
+		const std::vector<std::list<Cell>*> old_storage = _storage;
 		_storage.clear();
-		_storage.resize(_capacity);
+		_storage.resize(_capacity, nullptr);
 
-		for (const auto& list : old_storage) {
-			for (const auto& cell : list) {
+		for (auto list_ptr : old_storage) {
+			if (!list_ptr)
+				continue;
+			for (auto cell : *list_ptr)
 				prime_insert(cell.key, cell.val);
-			}
 		}
 	}
 
-	++_size;
-
-	return prime_insert(k, v);
+	return true;
 }
 
+bool HashTable::insert(const Key& k, const Value& v) {
+	if ((_size + 1) * _overflow_coeff >= _capacity) {
+		_capacity *= _expand_coeff;
+
+		const std::vector<std::list<Cell>*> old_storage = _storage;
+		_storage.clear();
+		_storage.resize(_capacity, nullptr);
+
+		for (auto list_ptr : old_storage) {
+			if (!list_ptr)
+				continue;
+			for (auto cell : *list_ptr)
+				prime_insert(cell.key, cell.val);
+		}
+	}
+	
+	bool result = prime_insert(k, v);
+	if (result)
+		++_size;
+	return result;
+}
+
+// unfortunatelly, std::find doesn't work
 bool HashTable::contains(const Key& k) const {
 	if (_size == 0)
 		return false;
-    const list<Cell> & list = _storage[calc_hash(k)];
-    auto it = std::find(list.begin(), list.end(),[&k](const Cell &c) { return c.key == k; });
-    return it != list.end();
+	const std::list<Cell>* list = _storage[calc_hash(k)];
+	if (!list)
+		return false;
+	std::list<Cell>::const_iterator it = find(k, list);
+	return it != list->end();
 }
 
 Value& HashTable::operator[](const Key& k) {
-	if (!this->contains(k)) {
-		this->insert(k, default_value);
+	const Value default_value("", 0);
+	std::list<Cell>* list = _storage[calc_hash(k)];
+	
+	if (!list) {
+		insert(k, default_value);
 	}
-	return find(k)->val;
+	else {
+		auto it = find(k, list);
+		if (it == list->end()) {
+			insert(k, default_value);
+		}
+	}
+
+	return find(k, _storage[calc_hash(k)])->val;
 }
 
 Value& HashTable::at(const Key& k) {
-	if (this->contains(k))
-		return find(k)->val;
+	std::list<Cell>* list = _storage[calc_hash(k)];
+	if (!list)
+		throw std::out_of_range("at threw to you \"out of range\"-excpetion");
+	auto it = find(k, list);
+	if (it != list->end())
+		return it->val;
 	else
-		throw std::out_of_range("at threw to you \"out of range\"-exception");
+		throw std::out_of_range("at threw to you \"out of range\"-excpetion");
 }
 
 const Value& HashTable::at(const Key& k) const {
-	if (this->contains(k))
-		return find(k)->val;
+	const std::list<Cell>* list = _storage[calc_hash(k)];
+	if (!list)
+		throw std::out_of_range("at threw to you \"out of range\"-excpetion");
+	auto it = find(k, list);
+	if (it != list->end())
+		return it->val;
 	else
-		throw std::out_of_range("at threw to you \"out of range\"-exception");
+		throw std::out_of_range("at threw to you \"out of range\"-excpetion");
 }
 
 size_t HashTable::size() const {
@@ -166,7 +231,19 @@ size_t HashTable::size() const {
 }
 
 bool HashTable::empty() const {
-    return _size == 0;
+	return _size == 0;
+}
+
+bool HashTable::contains_both(const Key& k, const Value& v) const {
+	const std::list<Cell>* list = _storage[calc_hash(k)];
+	if (!list)
+		return false;
+	auto it = find(k, list);
+	if (it == list->end())
+		return false;
+	if (it->val.age != v.age || it->val.name != v.name)
+		return false;
+	return true;
 }
 
 bool operator==(const HashTable& a, const HashTable& b)
@@ -175,10 +252,11 @@ bool operator==(const HashTable& a, const HashTable& b)
 		return false;
 	if (a._size == 0)
 		return true;
-	for (const auto & a_list : a._storage) {
-		for (const auto & a_cell : a_list) {
-            // CR: check both key and value
-			if (!b.contains(a_cell.key))
+	for (int i = 0; i < a._storage.size(); ++i) {
+		if (!a._storage[i])
+			continue;
+		for (auto j = a._storage[i]->begin(); j != a._storage[i]->end(); ++j) {
+			if (!b.contains_both((*j).key, (*j).val))
 				return false;
 		}
 	}

@@ -9,8 +9,6 @@ add_executable(
 	HashTable
 	main.cpp
 	hash_table.cpp
-	miscellaneous.cpp
-	randomize.cpp
 )
 
 include(FetchContent)
@@ -27,8 +25,6 @@ enable_testing()
 add_executable(
 	HashTableTests
 	hash_table.cpp
-	miscellaneous.cpp
-	randomize.cpp
 	test.cpp
 )
 

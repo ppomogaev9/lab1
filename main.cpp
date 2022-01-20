@@ -1,8 +1,5 @@
 #include "hash_table.hpp"
-#include "randomize.hpp"
 #include <iostream>
-#include "miscellaneous.hpp"
-#include <clocale>
 
 int main() {
 	HashTable A;
