@@ -27,32 +27,34 @@ public:
 	// Creates an instance of HT on base of another HT
 	HashTable(const HashTable & b);
 
-	// swap content of two HT with a third HT
+	// swap content of two HT
 	void swap(HashTable & b);
 
-	// clears a storage(vector of lists) and assign to all inner variables default values 
+	// clears a storage(vector of lists) and assigns to all inner variables default values
 	void clear();
 
 	// if our HT contains k then "erase" calls a list corresponding to k and then with function 
 	// std::list<...>::erase erases corresponding to k value and k itself from the 
 	// storage(vector of lists) and returns true; if it doesn't then the function just returns
-	// false 
+	// false
+    // CR: write more generic description, add a note about shrinking storage
 	bool erase(const Key & k);
 
 	// turns the key into a hash from 0 to the actual HT capacity using a function 
 	// with even distribution
 	bool insert(const Key & k, const Value & v);
 
-	// checks if HT contains cell with the key or not. Returns the value corresponding to answer to
-	// last question
+	// checks if HT contains cell with the key or not.
+    // true if k is present in hash table, false otherwise
 	bool contains(const Key & k) const;
 
 	// if HT contains requesting key then [] returns a reference to the value, corresponding to the
-	// HT cell which contains that key. If it doesn't then default value inserted to HT table with that key
+	// HT cell which contains that key.
+    // If it doesn't then default value inserted to HT table with that key and returns newly inserted value
 	Value& operator[](const Key& k);
 
-	// behave the same as the operator[] except if HT doesn't contain the key. If that then 
-	// "at" will throw a std::out_of_range exception
+	// behave the same as the operator[] except if HT doesn't contain the key.
+    // If that happens then "at" will throw a std::out_of_range exception
 	Value& at(const Key & k);
 	const Value& at(const Key & k) const;
 
@@ -62,18 +64,18 @@ public:
 	// returns false if HT size doesn't equal 0. If it does, returns true
 	bool empty() const;
 
-	// if a and b are indistinguishable, it means if their sizes are equal and they are contain 
-	// equal keys and equal values, then the operator returns true. In any other cases it returns false.
+	// if a and b are indistinguishable, it means that their sizes are equal and they contain
+	// equal keys and equal values in any order. in this case operator returns true. In any other cases it returns false.
 	friend bool operator==(const HashTable & a, const HashTable & b);
-
-	// behaves oppositely to operator==
 	friend bool operator!=(const HashTable & a, const HashTable & b);
 private:
-	static const size_t _expand_coeff = 2;
-	static const size_t _overflow_coeff = 5;
-	static const size_t _start_capacity = 16;
+	static const size_t EXPAND_COEF = 2;
+	static const size_t OVERFLOW_COEF = 5;
+	static const size_t INITIAL_CAPACITY = 16;
+
 	size_t _size = 0;
-	size_t _capacity = _start_capacity;
+    // CR: remove field
+	size_t _capacity = INITIAL_CAPACITY;
 
 	struct Cell {
 		Key key;
