@@ -13,7 +13,7 @@ struct Value {
 
 class HashTable {
 public:
-	// creates an empty HT. Empty HT consist of vector of 16 empty lists(std::list)
+	// creates an empty HT. Empty HT consist of vector of 16 empty lists
 	// so that constructor initializes corresponding values and resizes the lists vector
 	HashTable();
 
