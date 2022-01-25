@@ -1,7 +1,5 @@
-#include "pch.h"
 #include "hash_table.hpp"
-#include "miscellaneous.hpp"
-#include "randomize.hpp"
+#include "gtest/gtest.h"
 
 namespace testing_constants {
 	const Value default_value("", 0);
@@ -9,7 +7,7 @@ namespace testing_constants {
 
 using namespace testing_constants;
 
-bool operator== (const Value& a, const Value& b) {
+bool operator==(const Value& a, const Value& b) {
 	return a.age == b.age && a.name == b.name;
 }
 
@@ -206,36 +204,39 @@ TEST(ContainsCheck, DoContainTrueCell) {
 }
 
 // [] check
-TEST(SqBracketsCheck, FakeCellCheck) {
+
+/*
+ * CR: add tests:
+ * 3. [] with non-existing key returns default value
+ * HT a; a.insert(foo, bar); EXPECT(a[baz], default_val);
+ * 5. 2 default value inserts, change one, check that second also changed(not changed)?
+ * HT a; value & v = a["foo"]; a["bar"]; v.age = 42; EXPECT(a["bar"].v, 0);
+ */
+
+TEST(SqBracketsCheck, InsertDefaultValueWhenNoKeyInTable) {
 	HashTable A;
 	A["a"];
-	EXPECT_TRUE(A.contains("a"));
-	HashTable B;
-	B.insert("a", default_value);
-	EXPECT_EQ(A, B);
+    EXPECT_EQ(A.size(), 1);
+    EXPECT_EQ(A.at("a"), default_value);
 }
 
-TEST(SqBracketsCheck, TrueLoadCellCheck) {
+TEST(SqBracketsCheck, FindsCellAfterInsert) {
 	HashTable A;
 	A.insert("a", Value("21", 32));
 	EXPECT_EQ(A["a"], Value("21", 32));
 }
 
-TEST(SqBracketsCheck, ChangingTrueElem) {
+TEST(SqBracketsCheck, InsertAndThenChangeValue) {
 	HashTable A;
 	A.insert("t", default_value);
 	A["t"] = Value("namename", 10);
-	HashTable B;
-	B.insert("t", Value("namename", 10));
-	EXPECT_EQ(A, B);
+    EXPECT_EQ(A.at("t"), Value("namename", 10));
 }
 
-TEST(SqBracketsCheck, ChangingFakeElem) {
+TEST(SqBracketsCheck, Insert) {
 	HashTable A;
 	A["t"] = Value("namename", 10);
-	HashTable B;
-	B.insert("t", Value("namename", 10));
-	EXPECT_EQ(A, B);
+    EXPECT_EQ(A.at("t"), Value("namename", 10));
 }
 
 // at check

@@ -1,5 +1,3 @@
-#pragma once
-#include "pch.h"
 #include "hash_table.hpp"
 #include <exception>
 #include <stdexcept>
@@ -31,6 +29,7 @@ uint32_t HashTable::calc_hash(const Key& key) const {
 
 HashTable::HashTable() : _storage(INITIAL_CAPACITY, nullptr) {}
 
+// CR: remove elem_amount parameter, use _size
 void HashTable::free_storage(const std::vector<std::list<Cell>*>& storage, size_t elem_amount) {
 	for (int i = 0; (i < storage.size()) && (elem_amount > 0); ++i) {
 		if (storage[i]) {
@@ -41,6 +40,7 @@ void HashTable::free_storage(const std::vector<std::list<Cell>*>& storage, size_
 }
 
 // storage must be freed
+// CR: add same optimization as we have in free_storage
 void HashTable::copy_storage(const std::vector<std::list<Cell>*>& another_storage) {
 	if (_storage.size() != another_storage.size())
 		_storage.resize(another_storage.size());
@@ -94,14 +94,15 @@ void HashTable::clear() {
 	_size = 0;
 }
 
-void HashTable::storage_size_conversion(size_t new_size) {
+void HashTable::resize_storage(size_t new_size) {
 	const std::vector<std::list<Cell>*> old_storage = std::move(_storage);
 	_storage.resize(new_size, nullptr);
 
+    // CR: same optimization
 	for (auto list_ptr : old_storage) {
 		if (!list_ptr)
 			continue;
-		for (auto cell : *list_ptr) {
+		for (const auto& cell : *list_ptr) {
 			size_t cell_id = calc_hash(cell.key);
 			if (!_storage[cell_id])
 				_storage[cell_id] = new std::list<Cell>;
@@ -117,9 +118,8 @@ bool HashTable::erase(const Key& k) {
 	if (!list)
 		return false;
 	
-	size_t prev_capacity = list->size();
-	list->remove_if([&k](const Cell& c) { return c.key == k; });
-	if (prev_capacity == list->size())
+	size_t n_removed = list->remove_if([&k](const Cell& c) { return c.key == k; });
+	if (n_removed == 0)
 		return false;
 
 	if (list->empty()) {
@@ -129,15 +129,15 @@ bool HashTable::erase(const Key& k) {
 
 	--_size;
 
-	if ((_storage.size() > INITIAL_CAPACITY) && (_size * OVERFLOW_COEF < _storage.size())) 
-		storage_size_conversion(_storage.size() / EXPAND_COEF);
+	if ((_storage.size() > INITIAL_CAPACITY) && (_size * OVERFLOW_COEF < _storage.size()))
+        resize_storage(_storage.size() / EXPAND_COEF);
 
 	return true;
 }
 
 bool HashTable::insert(const Key& k, const Value& v) {
-	if ((_size + 1) * OVERFLOW_COEF >= _storage.size()) 
-		storage_size_conversion(_storage.size() * EXPAND_COEF);
+	if ((_size + 1) * OVERFLOW_COEF >= _storage.size())
+        resize_storage(_storage.size() * EXPAND_COEF);
 
 	bool result = prime_insert(k, v);
 	if (result)
@@ -160,7 +160,7 @@ HashTable::Cell* HashTable::find(const Key& k) const {
 
 bool HashTable::contains(const Key& k) const {
 	const Cell* c = find(k);
-	return (c != nullptr) && (c->key == k);
+	return c != nullptr;
 }
 
 Value& HashTable::operator[](const Key& k) {
@@ -177,14 +177,10 @@ Value& HashTable::operator[](const Key& k) {
 }
  
 const Value& HashTable::const_at(const Key& k) const {
-	const std::list<Cell>* list = _storage[calc_hash(k)];
-	if (!list)
-		throw std::out_of_range("at threw to you \"out of range\"-exception");
-	auto it = std::find_if(list->begin(), list->end(), [&k](const Cell& c) { return c.key == k; }); //const find if
-	if (it != list->end())
-		return it->val;
-	else
-		throw std::out_of_range("at threw to you \"out of range\"-exception");
+    const Cell* c = find(k);
+    if (c == nullptr)
+        throw std::out_of_range("at threw to you \"out of range\"-exception");
+    return c->val;
 }
 
 Value& HashTable::at(const Key& k) {
@@ -206,12 +202,14 @@ bool HashTable::empty() const {
 bool operator==(const HashTable& a, const HashTable& b) {
 	if (a._size != b._size)
 		return false;
+    // CR: add same optimization
 	for (int i = 0; i < a._storage.size(); ++i) {
-		if (!a._storage[i])
+        const auto list = a._storage[i];
+        if (!list)
 			continue;
-		for (auto j = a._storage[i]->begin(); j != a._storage[i]->end(); ++j) {
-			HashTable::Cell* cell = b.find(j->key);
-			if (cell == nullptr || ((cell->val.age != j->val.age) && (cell->val.name != j->val.name)))
+        for (const auto & a_cell : *list) {
+			HashTable::Cell* b_cell = b.find(a_cell.key);
+			if (b_cell == nullptr || ((b_cell->val.age != a_cell.val.age) && (b_cell->val.name != a_cell.val.name)))
 				return false;
 		}
 	}

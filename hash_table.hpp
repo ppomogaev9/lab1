@@ -84,7 +84,7 @@ private:
 
 	std::vector<std::list<Cell>*> _storage;
 
-	void storage_size_conversion(size_t);
+	void resize_storage(size_t new_size);
 
 	void free_storage(const std::vector<std::list<Cell>*>&, size_t);
 
