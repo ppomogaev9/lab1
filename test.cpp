@@ -1,13 +1,124 @@
-#include <gtest/gtest.h>
+#include "pch.h"
 #include "hash_table.hpp"
+#include "miscellaneous.hpp"
+#include "randomize.hpp"
+
+/*
+progress:
+
+	operator=
+	1. присвоение себя
+	3. Присвоение наполненной таблицы: ссылки не сохраняются, размер наследуется, 
+	находящиеся элементы исчезают, элементы из другой появляются. 
+
+	HashTable(const HashTable& a): 
+	1. не передаются указателями
+	2. содержимое копируется
+
+	swap: V
+	1. check
+	2. swap empty
+	3. with itself
+
+	clear 
+	1. clear пустой таблицы не приводит к terminate
+	2. clear заполненной чем-то таблицы приводит её дефолтной
+
+	erase
+	0. удаление элемента не приводит к проблемам
+	1. удаление не содержащегося в таблице элемента не приводит к проблемам
+	2. повторное удаление не приводит к проблемам
+	3. удаление элемента действительно его стирает
+	4. удаление элемента после сокращения таблицы не приводит к потере элементов
+	5. проверки возвращаемого значения. 
+	6. проверка не удалится ли не то значение, если будем удалять из списка, в котором не один элемент
+	
+	insert:
+	1. empty ничего не содержит
+	2. если поклали, то содержит
+	3. после расширения содержит положенное до
+	4. проверка возвращаемого значения            
+	5. инсерт одного ключа два раза               
+
+	contains:
+	1. пустая таблица не содержит элемента
+	2. заполненная таблица не содержит несодержащийся в ней элемент
+	3. заполненная таблица содержит содержащийся в ней элемент
+
+	operator[]
+	1.[] не содержащегося ведет себя правильно
+	2.[] содержашегося возвращает то, что нужно
+	3. изменение элемента с помощью[] приводит к ожидаемому результату
+	4. изменение фейкового элемента сразу приводит к ожидаемому результату
+	
+	at
+	1. когда надо бросает исключение, а когда не надо - нет
+	2. изменение элемента с помощью at приводит к ожидаемому результату
+	3. загруженный ключ корректно выдается при помощи at
+
+	at const
+	1. когда надо бросает исключение, а когда не надо - нет
+	2. загруженный ключ корректно выдается при помощи at
+
+	size:
+	1. size пустой таблицы = 0
+	2. от insert'а вплоть до expand'a увеличивается корректно
+	3. от erase'a вплоть до reduce'a уменьшается корректно
+	4. при добавлении того же ключа не увеличивается
+
+	empty
+	1. пустая таблица пуста
+	2. не пустая таблица не пуста
+	3. после удаления всех элементов пуста
+	4. после clear пуста
+
+	operator==
+	1. если загружены одинаковые элементы, то равны
+	2. пустые таблицы равны
+	3. если загржены разные элементы, то не равны
+	4. если есть разные элементы и одинаковые, то не равны
+	5. сама себе таблица равна
+
+	operator!=
+
+*/
 
 namespace testing_constants {
 	const Value default_value("", 0);
 }
+
 using namespace testing_constants;
 
 bool operator== (const Value& a, const Value& b) {
 	return a.age == b.age && a.name == b.name;
+}
+
+std::vector<std::pair<Key, Value>> table_filling_evenly(HashTable& HT) {
+	std::vector<std::pair<Key, Value>> result;
+	Key key;
+	Value val = default_value;
+	for (int i = 1; i < 101; ++i) {
+		key = i;
+		val = Value(std::string("name") + static_cast<char>(i), i);
+		HT.insert(key, val);
+		result.emplace_back(key, val);
+	}
+	return result;
+}
+
+std::vector<std::pair<Key, Value>> many_equal_hashes(HashTable& HT) {
+	std::vector<std::pair<Key, Value>> result;
+	Key key;
+	key = "\001\002";
+	Value val = default_value;
+	for (int i = 0; i < 100; ++i) {
+		val = Value(std::string("name") + static_cast<char>(i), i);
+		HT.insert(key, val);
+		result.emplace_back(key, val);
+		key.pop_back();
+		key += 2 * i + 4;
+	}
+	return result;
 }
 
 //swap check
@@ -92,14 +203,17 @@ TEST(CopyConstuctorCheck, PtrsDOESNTinherited) {
 TEST(ClearCheck, EmptyHTCheck) {
 	HashTable A;
 	EXPECT_NO_FATAL_FAILURE(A.clear());
-	EXPECT_TRUE(A == HashTable());
+	EXPECT_EQ(A, HashTable());
 }
 
 TEST(ClearCheck, EraseHTtoEmpty) {
 	HashTable A;
 	A.insert("1", default_value);
+	A.insert("2", default_value);
+	A.insert("3", default_value);
+	A.insert("4", default_value); // expand 
 	A.clear();
-	EXPECT_TRUE(A == HashTable());
+	EXPECT_EQ(A, HashTable());
 }
 
 // erase check
@@ -107,6 +221,7 @@ TEST(EraseCheck, DeleteFakeKey) {
 	HashTable A;
 	A.insert("1", default_value);
 	EXPECT_NO_FATAL_FAILURE(A.erase("2"));
+	EXPECT_TRUE(A.contains("1"));
 }
 
 TEST(EraseCheck, EraseDOESNTterminate) {
@@ -137,6 +252,8 @@ TEST(EraseCheck, ReduceCheck) {
 	A.insert("d", default_value); // expand
 	A.erase("d");
 	EXPECT_TRUE(A.contains("a"));
+	EXPECT_TRUE(A.contains("b"));
+	EXPECT_TRUE(A.contains("c"));
 }
 
 TEST(EraseCheck, RetValueCheck) {
@@ -156,11 +273,6 @@ TEST(EraseCheck, EqualHashesCheck) {
 }
 
 // contains check
-TEST(ContainsCheck, EmptyHTCheck) {
-	HashTable A;
-	EXPECT_FALSE(A.contains("9"));
-}
-
 TEST(ContainsCheck, DOESNTcontainFakeCell) {
 	HashTable A;
 	A.insert("5", default_value);
@@ -180,13 +292,13 @@ TEST(SqBracketsCheck, FakeCellCheck) {
 	EXPECT_TRUE(A.contains("a"));
 	HashTable B;
 	B.insert("a", default_value);
-	EXPECT_TRUE(A == B);
+	EXPECT_EQ(A, B);
 }
 
 TEST(SqBracketsCheck, TrueLoadCellCheck) {
 	HashTable A;
-	A.insert("a", default_value);
-	EXPECT_TRUE(A["a"] == default_value);
+	A.insert("a", Value("21", 32));
+	EXPECT_EQ(A["a"], Value("21", 32));
 }
 
 TEST(SqBracketsCheck, ChangingTrueElem) {
@@ -263,8 +375,6 @@ TEST(SizeCheck, Inserting) {
 	EXPECT_EQ(A.size(), 3);
 	A.insert("4", default_value); // expand
 	EXPECT_EQ(A.size(), 4);
-	A.insert("5", default_value); 
-	EXPECT_EQ(A.size(), 5);
 }
 
 TEST(SizeCheck, Erasing) {
@@ -323,7 +433,7 @@ TEST(EmptyCheck, ClearLeadsToEmpty) {
 	EXPECT_TRUE(A.empty());
 }
 
-// operator== check 
+// operator==
 TEST(EqualityOpCheck, EmptyTables) {
 	HashTable A, B;
 	EXPECT_TRUE(A == B);
@@ -399,82 +509,6 @@ TEST(EqualityOpCheck, DiffSizes) {
 	EXPECT_FALSE(A == B);
 }
 
-// operator!=
-TEST(UnequalityOpCheck, EmptyTables) {
-	HashTable A, B;
-	EXPECT_FALSE(A != B);
-}
-
-TEST(UnequalityOpCheck, OnlyDifferentKeys) {
-	HashTable A;
-	A.insert("1", default_value);
-	A.insert("2", default_value);
-	A.insert("3", default_value);
-	A.insert("4", default_value);
-	HashTable B;
-	B.insert("a", default_value);
-	B.insert("b", default_value);
-	B.insert("c", default_value);
-	B.insert("d", default_value);
-	EXPECT_TRUE(A != B);
-}
-
-TEST(UnequalityOpCheck, OnlyEqualKeys) {
-	HashTable A;
-	A.insert("1", default_value);
-	A.insert("2", default_value);
-	A.insert("3", default_value);
-	A.insert("4", default_value);
-	HashTable B;
-	B.insert("1", default_value);
-	B.insert("2", default_value);
-	B.insert("3", default_value);
-	B.insert("4", default_value);
-	EXPECT_FALSE(A != B);
-}
-
-TEST(UnequalityOpCheck, EqualAndUnequalKeys) {
-	HashTable A;
-	A.insert("1", default_value);
-	A.insert("2", default_value);
-	A.insert("3", default_value);
-	A.insert("4", default_value);
-	HashTable B;
-	B.insert("1", default_value);
-	B.insert("2", default_value);
-	B.insert("a", default_value);
-	B.insert("4", default_value);
-	EXPECT_TRUE(A != B);
-}
-
-TEST(UnequalityOpCheck, EqualToItself) {
-	HashTable A;
-	A.insert("1", default_value);
-	A.insert("2", default_value);
-	EXPECT_FALSE(A != A);
-}
-
-TEST(UnequalityOpCheck, EqualKeysUnequalValues) {
-	HashTable A;
-	A.insert("1", default_value);
-	A.insert("2", default_value);
-	A.insert("3", default_value);
-	A.insert("4", default_value);
-	HashTable B;
-	B.insert("1", default_value);
-	B.insert("2", default_value);
-	B.insert("3", Value("d", 21));
-	B.insert("4", default_value);
-	EXPECT_TRUE(A != B);
-}
-
-TEST(UnequalityOpCheck, DiffSizes) {
-	HashTable A;
-	HashTable B;
-	B.insert("1", default_value);
-	EXPECT_TRUE(A != B);
-}
-
 // assignment check
 TEST(AssignmentOpCheck, AssignmentToItself) {
 	HashTable A;
@@ -496,4 +530,78 @@ TEST(AssignmentOpCheck, AssignmentToAnother) {
 	EXPECT_FALSE(A.contains("1"));
 	EXPECT_EQ(A.size(), 2);
 	EXPECT_NE(&A["a"], &B["a"]);
+}
+
+// larger tests
+TEST(LargeTests, ClearTest) {
+	HashTable A;
+	table_filling_evenly(A);
+	A.clear();
+	EXPECT_EQ(A, HashTable());
+	many_equal_hashes(A);
+	A.clear();
+	EXPECT_EQ(A, HashTable());
+}
+
+TEST(LargeTests, SizeCheck) {
+	HashTable A;
+	table_filling_evenly(A);
+	EXPECT_EQ(A.size(), 100);
+	A.clear();
+	many_equal_hashes(A);
+	EXPECT_EQ(A.size(), 100);
+}
+
+TEST(LargeTests, EqualityOpCheck) {
+	HashTable A;
+	HashTable B;
+	table_filling_evenly(A);
+	table_filling_evenly(B);
+	EXPECT_EQ(A, B);
+	A.clear();
+	B.clear();
+	many_equal_hashes(A);
+	many_equal_hashes(B);
+	EXPECT_EQ(A, B);
+}
+
+TEST(LargeTests, ContainsCheck) {
+	HashTable A;
+	std::vector<std::pair<Key, Value>> cells_A = table_filling_evenly(A);
+	HashTable B;
+	std::vector<std::pair<Key, Value>> cells_B = many_equal_hashes(B);
+
+	for (int i = 0; i < 99; ++i) {
+		EXPECT_TRUE(A.contains(cells_A[i].first));
+		EXPECT_FALSE(A.contains(cells_B[i].first));
+		EXPECT_FALSE(B.contains(cells_A[i].first));
+		EXPECT_TRUE(B.contains(cells_B[i].first));
+	}
+}
+
+TEST(LargeTests, EraseCheck) {
+	HashTable A;
+	std::vector<std::pair<Key, Value>> cells = table_filling_evenly(A);
+	for (int i = 0; i < 100; ++i) {
+		A.erase(cells[i].first);
+	}
+	EXPECT_EQ(A, HashTable());
+	A.clear();
+	cells = many_equal_hashes(A);
+	for (int i = 0; i < 100; ++i) {
+		A.erase(cells[i].first);
+	}
+	EXPECT_EQ(A, HashTable());
+}
+
+TEST(LargeTests, AssignmentOp) {
+	HashTable A;
+	table_filling_evenly(A);
+	HashTable B;
+	B = A;
+	EXPECT_EQ(A, B);
+	A.clear();
+	many_equal_hashes(A);
+	B = A;
+	EXPECT_EQ(A, B);
 }
