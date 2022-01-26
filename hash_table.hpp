@@ -86,9 +86,9 @@ private:
 
 	void resize_storage(size_t new_size);
 
-	void free_storage(const std::vector<std::list<Cell>*>&, size_t);
+	void free_storage(const std::vector<std::list<Cell>*>& storage);
 
-	void copy_storage(const std::vector<std::list<Cell>*>&);
+	void copy_storage(const std::vector<std::list<Cell>*>& another_storage, size_t elem_amount);
 
 	Cell* find(const Key&) const;
 
