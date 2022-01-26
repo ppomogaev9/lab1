@@ -1,6 +1,7 @@
 #include "hash_table.hpp"
 #include "gtest/gtest.h"
 
+
 namespace testing_constants {
 	const Value default_value("", 0);
 }
@@ -60,17 +61,18 @@ TEST(SwapCheck, SwapEmptyHTs) {
 	HashTable B;
 	A.swap(B);
 	EXPECT_EQ(A.size(), 0);
-    // CR: check b.size
+	EXPECT_EQ(B.size(), 0);
 }
 
 TEST(SwapCheck, SwapWithItself) {
 	HashTable A;
 	A.swap(A);
-    // CR: check A size
+	EXPECT_EQ(A.size(), 0);
 	A.insert("1", default_value);
-	EXPECT_TRUE(A.contains("1"));
-	EXPECT_EQ(A.size(), 1);
 	A.swap(A);
+	EXPECT_EQ(A.size(), 1);
+	EXPECT_TRUE(A.contains("1"));
+	EXPECT_EQ(A.at("1"), default_value);
 }
 
 TEST(SwapCheck, SwapEmptyWithNonEmpty) {
@@ -86,7 +88,7 @@ TEST(SwapCheck, SwapEmptyWithNonEmpty) {
 }
 
 
- //insert check
+//insert check
 
 TEST(InsertCheck, CheckValueAfterInsert) {
 	HashTable A;
@@ -111,20 +113,22 @@ TEST(InsertCheck, ExpandCorrectivityCheck) {
 TEST(InsertCheck, OneKeyTwiceSameValue) {
 	HashTable A;
 	EXPECT_TRUE(A.insert("1", default_value));
+	EXPECT_EQ(A.at("1"), default_value);
+	EXPECT_EQ(A.size(), 1);
 	EXPECT_FALSE(A.insert("1", default_value));
-    // CR: check that value is the same using at
-    // CR: check size
+	EXPECT_EQ(A.at("1"), default_value);
+	EXPECT_EQ(A.size(), 1);
 }
 
 TEST(InsertCheck, SameKeyDifferentValue) {
 	HashTable A;
 	EXPECT_TRUE(A.insert("pw", default_value));
-    // CR: check value after insert
+	EXPECT_EQ(A.at("pw"), default_value);
 	EXPECT_FALSE(A.insert("pw", Value("name", 9)));
 	EXPECT_EQ(A["pw"], Value("name", 9));
 }
 
- //copy constructor check
+//copy constructor check
 TEST(CopyConstuctorCheck, CopyHT_SameSizesAndSameContent) {
 	HashTable A;
 	A.insert("1", default_value);
@@ -156,12 +160,11 @@ TEST(CopyConstructorCheck, ChangingValueDoesntInfluenceToAnother) {
 	A.insert("2", default_value);
 	HashTable B = A;
 	A["1"] = Value("102", 120);
-    // CR: it's better to check that B["1"] equals to default_value
-	EXPECT_NE(B["1"], Value("102", 120));
+	EXPECT_EQ(B["1"], default_value);
 }
 
 
- //clear check
+//clear check
 TEST(ClearCheck, EmptyHTCheck) {
 	HashTable A;
 	A.clear();
@@ -182,16 +185,14 @@ TEST(ClearCheck, EraseHTtoEmpty) {
 	EXPECT_FALSE(A.contains("4"));
 }
 
- // erase check
+// erase check
 TEST(EraseCheck, DeleteFakeKey) {
 	HashTable A;
 	A.insert("1", default_value);
-    // CR: why erase two times?
-	A.erase("2");
 	EXPECT_FALSE(A.erase("2"));
 	EXPECT_EQ(A.size(), 1);
-    // CR: check value
 	EXPECT_TRUE(A.contains("1"));
+	EXPECT_EQ(A.at("1"), default_value);
 }
 
 TEST(EraseCheck, BasicCheck) {
@@ -212,14 +213,14 @@ TEST(EraseCheck, ReduceCheck) {
 	A.erase("c");
 	A.erase("a");
 	EXPECT_EQ(A.size(), 1);
-    // CR: check value
 	EXPECT_TRUE(A.contains("b"));
+	EXPECT_EQ(A.at("b"), default_value);
 }
 
 TEST(EraseCheck, RetValueCheck) {
 	HashTable A;
 	A.insert("1", default_value);
-    EXPECT_EQ(A.size(), 1);
+	EXPECT_EQ(A.size(), 1);
 	EXPECT_TRUE(A.erase("1"));
 	EXPECT_EQ(A.size(), 0);
 	EXPECT_FALSE(A.erase("1"));
@@ -238,17 +239,15 @@ TEST(EraseCheck, EqualHashesCheck) {
 
 TEST(EraseCheck, EraseKeyFromEmptyHT) {
 	HashTable A;
-    // CR: EXPECT_FALSE
-	A.erase("1");
+	EXPECT_FALSE(A.erase("1"));
 	EXPECT_EQ(A.size(), 0);
 	EXPECT_FALSE(A.contains("1"));
 }
 
- // contains check
+// contains check
 TEST(ContainsCheck, DoContainTrueCell) {
 	HashTable A;
-    // CR: EXPECT_TRUE
-	A.insert("4", default_value);
+	EXPECT_TRUE(A.insert("4", default_value));
 	EXPECT_TRUE(A.contains("4"));
 }
 
@@ -285,7 +284,7 @@ TEST(SqBracketsCheck, FindsCellAfterInsert) {
 TEST(SqBracketsCheck, InsertAndThenChangeValue) {
 	HashTable A;
 	A.insert("t", default_value);
-    // CR: check value before
+	EXPECT_EQ(A["t"], default_value);
 	A["t"] = Value("namename", 10);
 	EXPECT_EQ(A.at("t"), Value("namename", 10));
 }
@@ -296,13 +295,12 @@ TEST(SqBracketsCheck, Insert) {
 	EXPECT_EQ(A.at("t"), Value("namename", 10));
 }
 
- // at check
+// at check
 TEST(AtCheck, ThrowingCheck) {
 	HashTable A;
 	EXPECT_THROW(A.at("1"), std::out_of_range);
 	A.insert("1", default_value);
-    // CR: check value instead
-	EXPECT_NO_THROW(A.at("1"));
+	EXPECT_EQ(A.at("1"), default_value);
 	EXPECT_THROW(A.at("2"), std::out_of_range);
 }
 
@@ -326,8 +324,7 @@ TEST(ConstAtCheck, ThrowingCheck) {
 	HashTable A;
 	A.insert("1", default_value);
 	const HashTable C = A;
-    // CR: check value instead
-	EXPECT_NO_THROW(C.at("1"));
+	EXPECT_EQ(C.at("1"), default_value);
 	EXPECT_THROW(C.at("2"), std::out_of_range);
 }
 
@@ -339,7 +336,7 @@ TEST(ConstAtCheck, TrueLoadCellCheck) {
 	EXPECT_EQ(A.size(), 1);
 }
 
- //size check
+//size check
 TEST(SizeCheck, EmptyHTSize) {
 	HashTable A;
 	EXPECT_EQ(A.size(), 0);
@@ -397,11 +394,10 @@ TEST(EmptyCheck, ClearLeadsToEmpty) {
 	A.insert("3", default_value);
 	A.insert("4", default_value);
 	A.clear();
-    // CR: A.empty()
-	EXPECT_EQ(A.size(), 0);
+	EXPECT_TRUE(A.empty());
 }
 
- // operator==
+// operator==
 TEST(EqualityOpCheck, EmptyTables) {
 	HashTable A, B;
 	EXPECT_TRUE(A == B);
@@ -450,17 +446,17 @@ TEST(EqualityOpCheck, EqualAndUnequalKeys) {
 }
 
 TEST(EqualityOpCheck, EqualKeysUnequalValues) {
-    HashTable A;
-    A.insert("1", default_value);
-    A.insert("2", default_value);
-    A.insert("3", default_value);
-    A.insert("4", default_value);
-    HashTable B;
-    B.insert("1", default_value);
-    B.insert("2", default_value);
-    B.insert("3", Value("d", 21));
-    B.insert("4", default_value);
-    EXPECT_FALSE(A == B);
+	HashTable A;
+	A.insert("1", default_value);
+	A.insert("2", default_value);
+	A.insert("3", default_value);
+	A.insert("4", default_value);
+	HashTable B;
+	B.insert("1", default_value);
+	B.insert("2", default_value);
+	B.insert("3", Value("d", 21));
+	B.insert("4", default_value);
+	EXPECT_FALSE(A == B);
 }
 
 TEST(EqualityOpCheck, Reflexivity) {
@@ -474,41 +470,47 @@ TEST(EqualityOpCheck, Reflexivity) {
 }
 
 TEST(EqualityOpCheck, Symmetry) {
-    HashTable A;
-    A.insert("1", default_value);
-    A.insert("2", default_value);
-    A.insert("3", default_value);
-    A.insert("4", default_value);
-    HashTable B;
-    B.insert("1", default_value);
-    B.insert("2", default_value);
-    B.insert("3", default_value);
-    B.insert("4", default_value);
-    // CR: EXPECT_TRUE(A == B); EXPECT_TRUE(B == A);
-    EXPECT_TRUE(!(A == B) || (B == A));
-    B["1"] = Value("1", 2);
-    // CR: EXPECT_TRUE(A != B); EXPECT_TRUE(B != A);
-    EXPECT_TRUE(!(A == B) || (B == A));
+	HashTable A;
+	A.insert("1", default_value);
+	A.insert("2", default_value);
+	A.insert("3", default_value);
+	A.insert("4", default_value);
+	HashTable B;
+	B.insert("1", default_value);
+	B.insert("2", default_value);
+	B.insert("3", default_value);
+	B.insert("4", default_value);
+	EXPECT_TRUE(A == B); 
+	EXPECT_TRUE(B == A);
+	B["1"] = Value("1", 2);
+	EXPECT_TRUE(A != B);
+	EXPECT_TRUE(B != A);
 }
 
 TEST(EqualityOpCheck, Transitivity) {
-    HashTable A;
-    A.insert("1", default_value);
-    A.insert("2", default_value);
-    HashTable B;
-    A.insert("1", default_value);
-    A.insert("2", default_value);
-    HashTable C;
-    // CR: EXPECT_TRUE(A == B); EXPECT_TRUE(B == C); EXPECT_TRUE(A == C)
-    // CR: edit rest of the checks accordingly
-    EXPECT_TRUE((!(A == B) || !(B == C)) || (A == C));
-    C.insert("1", default_value);
-    C.insert("2", default_value);
-    EXPECT_TRUE((!(A == B) || !(B == C)) || (A == C));
-    A.erase("1");
-    EXPECT_TRUE((!(A == B) || !(B == C)) || (A == C));
-    B.erase("2");
-    EXPECT_TRUE((!(A == B) || !(B == C)) || (A == C));
+	HashTable A;
+	A.insert("1", default_value);
+	A.insert("2", default_value);
+	HashTable B;
+	B.insert("1", default_value);
+	B.insert("2", default_value);
+	HashTable C;
+	EXPECT_TRUE(A == B); 
+	EXPECT_TRUE(B != C); 
+	EXPECT_TRUE(A != C);
+	C.insert("1", default_value);
+	C.insert("2", default_value);
+	EXPECT_TRUE(A == B);
+	EXPECT_TRUE(B == C);
+	EXPECT_TRUE(A == C);
+	A.erase("1");
+	EXPECT_TRUE(A != B);
+	EXPECT_TRUE(B == C);
+	EXPECT_TRUE(A != C);
+	B.erase("2");
+	EXPECT_TRUE(A != B);
+	EXPECT_TRUE(B != C);
+	EXPECT_TRUE(A != C);
 }
 
 TEST(EqualityOpCheck, DiffSizes) {
@@ -518,7 +520,20 @@ TEST(EqualityOpCheck, DiffSizes) {
 	EXPECT_FALSE(A == B);
 }
 
-// CR: operator== test for tables with different capacity but same entries?
+TEST(EqualityOpCheck, DiffCapacitiesSameEntries) {
+	HashTable A;
+	A.insert("1", Value("name2", 21));
+	A.insert("2", default_value);
+	A.insert("3", default_value);
+	A.insert("4", default_value); //expand
+	HashTable B;
+	B.insert("1", Value("name2", 21));
+	EXPECT_FALSE(A == B);
+	A.erase("2");
+	A.erase("3");
+	A.erase("4");
+	EXPECT_TRUE(A == B);
+}
 
  // assignment check
 TEST(AssignmentOpCheck, AssignmentToItself) {
